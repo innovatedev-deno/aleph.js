@@ -7,6 +7,12 @@ export function json(data: unknown, init?: ResponseInit): Response {
   });
 }
 
+export type RequestContext = {
+  params: Record<string, string|string[]>;
+  HTMLRewriter: unknown;
+  responseHeaders: Headers;
+}
+
 export type CacheControl = {
   maxAge?: number;
   sMaxAge?: number;

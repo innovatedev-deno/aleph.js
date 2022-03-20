@@ -7,7 +7,7 @@ import util from "../lib/util.ts";
 import { VERSION } from "../version.ts";
 import { initModuleLoaders, loadImportMap, loadJSXConfig } from "./config.ts";
 import renderer from "./renderer.ts";
-import { content, json } from "./response.ts";
+import { content, json, RequestContext } from "./response.ts";
 import { importRouteModule, initRoutes } from "./routing.ts";
 import clientModuleTransformer from "./transformer.ts";
 import type { AlephConfig, FetchHandler, Middleware, Route, SSRContext } from "./types.ts";
@@ -120,13 +120,14 @@ export const serve = (options: ServerOptions = {}) => {
     }
 
     const customHTMLRewriter = new Map<string, HTMLRewriterHandlers>();
-    const ctx = {
+    const ctx: RequestContext = {
       params: {},
       HTMLRewriter: {
         on: (selector: string, handlers: HTMLRewriterHandlers) => {
           customHTMLRewriter.set(selector, handlers);
         },
       },
+      responseHeaders: new Headers()
     };
 
     // use middlewares
@@ -134,7 +135,7 @@ export const serve = (options: ServerOptions = {}) => {
       for (const mw of middlewares) {
         const handler = mw.fetch;
         if (typeof handler === "function") {
-          let res = handler(req, ctx);
+          let res = handler.call(mw, req, ctx);
           if (res instanceof Promise) {
             res = await res;
           }
@@ -241,6 +242,9 @@ export const serve = (options: ServerOptions = {}) => {
       customHTMLRewriter,
       isDev,
       ssr,
+    }).then(res => {
+      ctx.responseHeaders.forEach((value, key) => res.headers.append(key, value))
+      return res
     });
   };
 
